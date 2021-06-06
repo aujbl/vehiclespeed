@@ -5,9 +5,9 @@ import math
 import matplotlib.pyplot as plt
 
 # 视频帧率: 30帧/s
-cap = cv2.VideoCapture('uusgu-1bxuj.mp4')
-rect1 = ((342, 702), (7, 40), 55)
-rect2 = ((252, 618), (7, 40), 55)
+cap = cv2.VideoCapture('video1.mp4')
+rect1 = ((260, 350), (8, 120), 80)
+rect2 = ((550, 480), (10, 250), 80)
 box1, box2 = cv2.boxPoints(rect1), cv2.boxPoints(rect2)
 box1, box2 = np.int0(box1), np.int0(box2)
 plt.figure(0, figsize=(16, 8))
@@ -26,8 +26,10 @@ def coils_pixels(frame, rect):
 def show(frame):
     frame = cv2.drawContours(frame, [box1], 0, (0, 0, 255), 2)
     frame = cv2.drawContours(frame, [box2], 0, (0, 255, 0), 2)
+    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     plt.imshow(frame)
     plt.pause(0.001)
+    # plt.show()
     plt.clf()
 
 # def put_text():
@@ -35,7 +37,8 @@ def show(frame):
 
 def main():
     ret, frame = cap.read()
-    frame_size = (540, 960)
+    frame_size = (960, 540)
+    # frame_size = (540, 960)
     velocity, len_coils, time = 0, 10, 0
     frame = cv2.resize(frame, frame_size)
     mean_coil_1 = coils_pixels(frame, rect1)
@@ -47,7 +50,7 @@ def main():
         coil_2 = coils_pixels(frame, rect2)
         diff_1 = abs(mean_coil_1 - coil_1)
         diff_2 = abs(mean_coil_2 - coil_2)
-        # print('diff_1:%.2f, diff_2:%.2f' % (diff_1, diff_2))
+        print('diff_1:%.2f, diff_2:%.2f' % (diff_1, diff_2))
         if car_enter:
             cnt += 1
             frame = cv2.putText(frame, "car comming", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 1)
@@ -63,9 +66,6 @@ def main():
             # 30帧/s, time/s, len_coils = 10m
             time = 1 / 30 * cnt
             velocity = len_coils / time * 3.6  # km/h
-            # print('cnt: ', cnt)
-            # print('time:%.2f s' % time)
-            # print('velocity:%.2f km/h' % velocity)
         show(frame)
         ret, frame = cap.read()
 
