@@ -80,5 +80,7 @@ def main():
         show(frame)
         ret, frame = cap.read()
 
+
 if __name__ == '__main__':
     main()
+    cap.release()
