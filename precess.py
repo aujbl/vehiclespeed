@@ -27,18 +27,23 @@ _, frame = preprocess(frame, k_size=5, fileter='m', op=cv2.MORPH_ELLIPSE)
 frames = [frame] * 3
 while ret:
     ret, frame = cap.read()
+    orig_img = frame
     _, frame = preprocess(frame, k_size=5, fileter='m', op=cv2.MORPH_ELLIPSE)
     frames.pop(0)
     frames.append(frame)
     diff = frame_diff(frames)
 
     contours, _ = cv2.findContours(diff, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    for contour in contours:
+    contours.sort(key = lambda contour: cv2.contourArea(contour), reverse=True)
+    for contour in contours[:3]:
         box = cv2.boundingRect(contour)
         x, y, w, h = box
-        diff = cv2.rectangle(diff, (x, y), (w, h), (0, 255, 0))
+        orig_img = cv2.rectangle(orig_img, (x, y), (w, h), (0, 255, 0))
+    # orig_img = cv2.drawContours(orig_img, contours[:10], -1, (0, 255, 0))
 
-    plt.imshow(diff, cmap='gray')
+    orig_img = cv2.cvtColor(orig_img, cv2.COLOR_BGR2RGB)
+    # plt.imshow(diff, cmap='gray')
+    plt.imshow(orig_img)
     plt.pause(0.0001)
     plt.clf()
 cap.release()
