@@ -28,10 +28,7 @@ class Detector(object):
         if not bias_num > 0:
             raise Exception('bias_num must > 0')
 
-        if isinstance(video_index, str):
-            is_camera = False
-        else:
-            is_camera = True
+        is_camera = False if isinstance(video_index, str) else True
 
         # cap = cv2.VideoCapture(video_index)  # 创建摄像头识别类
         cap = cv2.VideoCapture('video2.mp4')
@@ -115,7 +112,7 @@ class Detector(object):
 
 if __name__ == "__main__":
     detector = Detector()
-    detector.catch_video(0, bias_num=3, iterations=3,
+    detector.catch_video(0, bias_num=2, iterations=3,
                          k_size=5, show_test=True, enhance=True)
 
 
