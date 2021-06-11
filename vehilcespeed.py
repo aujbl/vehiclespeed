@@ -5,7 +5,7 @@ import math
 import matplotlib.pyplot as plt
 
 # 视频帧率: 30帧/s
-cap = cv2.VideoCapture('video2.mp4')
+cap = cv2.VideoCapture('video3.mp4')
 rect1 = ((270, 335), (90, 10), -5)
 rect2 = ((580, 480), (250, 15), -5)
 box1, box2 = cv2.boxPoints(rect1), cv2.boxPoints(rect2)

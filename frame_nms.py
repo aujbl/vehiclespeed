@@ -15,7 +15,7 @@ class Detector(object):
 
     def catch_video(self, video_index=0, k_size=7,
                     iterations=3, threshold=20, bias_num=1,
-                    min_area=360, show_test=True, enhance=True):
+                    min_area=360, show_test=True, enhance=False):
 
                     # video_index：摄像头索引或者视频路径
                     # k_size：中值滤波的滤波器大小
@@ -55,19 +55,19 @@ class Detector(object):
             ret, mask = cv2.threshold(
                 gray, threshold, 255, cv2.THRESH_BINARY)
 
-            if enhance:
-                mask = cv2.dilate(mask, self.es, iterations)
-                mask = cv2.erode(mask, self.es, iterations)
+            # if enhance:
+            #     mask = cv2.dilate(mask, self.es, iterations)
+            #     mask = cv2.erode(mask, self.es, iterations)
 
-            cnts, _ = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            bounds = self.nms_cnts(cnts, mask, min_area)
+            # cnts, _ = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            # bounds = self.nms_cnts(cnts, mask, min_area)
 
-            for b in bounds:
-                x, y, w, h = b
-                cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
+            # for b in bounds:
+            #     x, y, w, h = b
+            #     cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
 
-            if not is_camera:
-                sleep(self.time)
+            # if not is_camera:
+            #     sleep(self.time)
 
             cv2.imshow(self.name, frame)  # 在window上显示图片
             if show_test:
@@ -87,22 +87,22 @@ class Detector(object):
         cap.release()
         cv2.destroyAllWindows()
 
-    def nms_cnts(self, cnts, mask, min_area):
-        bounds = [cv2.boundingRect(c) for c in cnts if cv2.contourArea(c) > min_area]
-        if len(bounds) == 0:
-            return []
-        scores = [self.calculate(b, mask) for b in bounds]
-        bounds = np.array(bounds)
-        scores = np.expand_dims(np.array(scores), axis=-1)
-        keep = py_cpu_nms(np.hstack([bounds, scores]), self.nms_threshold)
-        return bounds[keep]
+    # def nms_cnts(self, cnts, mask, min_area):
+    #     bounds = [cv2.boundingRect(c) for c in cnts if cv2.contourArea(c) > min_area]
+    #     if len(bounds) == 0:
+    #         return []
+    #     scores = [self.calculate(b, mask) for b in bounds]
+    #     bounds = np.array(bounds)
+    #     scores = np.expand_dims(np.array(scores), axis=-1)
+    #     keep = py_cpu_nms(np.hstack([bounds, scores]), self.nms_threshold)
+    #     return bounds[keep]
 
-    def calculate(self, bound, mask):
-        x, y, w, h = bound
-        area = mask[y:y+h, x:x+w]
-        pos = area > 0 + 0
-        score = np.sum(pos)/(w*h)
-        return score
+    # def calculate(self, bound, mask):
+    #     x, y, w, h = bound
+    #     area = mask[y:y+h, x:x+w]
+    #     pos = area > 0 + 0
+    #     score = np.sum(pos)/(w*h)
+    #     return score
 
     def pop(self, l, value):
         l.pop(0)
@@ -113,7 +113,7 @@ class Detector(object):
 if __name__ == "__main__":
     detector = Detector()
     detector.catch_video(0, bias_num=2, iterations=3,
-                         k_size=5, show_test=True, enhance=True)
+                         k_size=5, show_test=True, enhance=False)
 
 
 # 第一个参数可以是数字（表示打开摄像头）也可以是视频路径地址

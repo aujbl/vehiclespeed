@@ -4,60 +4,59 @@ import matplotlib.pyplot as plt
 
 plt.figure(0, figsize=(16, 8))
 
-def preprocess(frame, k_size=5, fileter='Gauss', threshold=60, op=None):
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    gray = cv2.GaussianBlur(gray, (k_size, k_size), 0.) if fileter == 'Gauss' \
-            else cv2.medianBlur(gray, k_size)
-    _, thresh = cv2.threshold(gray, threshold, 255, cv2.THRESH_BINARY)
-    if op:
-        op = cv2.getStructuringElement(op, (k_size, k_size))
-        thresh = cv2.erode(thresh, op)
-        thresh = cv2.dilate(thresh, op)
-    return gray, thresh
+def bounds_filter(bounds, img, min_area=50):
+    new_bounds = []
+    for bound in bounds:
+        x, y, w, h = bound
+        if w * h > min_area:
+            new_bounds.append((bound, 0))
+            # img = img[x:x+w, y:y+h]
+            # NonZero = cv2.countNonZero(img)
+            # if NonZero > 0:
+            #     bound = (bound, NonZero/(w*h))
+            #     new_bounds.append(bound)
+    return new_bounds
 
-def frame_diff(frames):
-    diff_1 = cv2.absdiff(frames[1], frames[0])
-    diff_2 = cv2.absdiff(frames[2], frames[1])
-    return cv2.absdiff(diff_2, diff_1)
+def motion_detector(frames, blur_size=5, threshold=15, enhencer=None, e_size=7, iterations=3):
+    diff = cv2.absdiff(frames[0], frames[1])
+    # diff_2 = cv2.absdiff(frames[2], frames[1])
+    # diff = cv2.absdiff(diff_2, diff_1)
+    diff = cv2.medianBlur(diff, blur_size)
+    _, thresh = cv2.threshold(diff, threshold, 255, cv2.THRESH_BINARY)
+    if enhencer:
+        enhencer = cv2.getStructuringElement(enhencer, (e_size, e_size))
+        thresh = cv2.dilate(thresh, enhencer, iterations)
+        thresh = cv2.erode(thresh, enhencer)
+    return thresh
 
-def cal_nonzero_rate(img, bound):
-    x, y, w, h = bound
-    img = img[x:x+w, y:y+h]
-    return cv2.countNonZero(img) / (w*h)
-
-def contours_filter(contours, img, min_area=1000):
-    bounds = [cv2.boundingRect(contour) for contour in contours]
-    bounds1 = bounds.copy()
-    # contours.sort(key=lambda contour: cv2.contourArea(contour), reverse=True)
-    bounds.sort(key=lambda bound: cal_nonzero_rate(img, bound), reverse=False)
-    return bounds
-
-
-cap = cv2.VideoCapture('video2.mp4')
+cap = cv2.VideoCapture('video3.mp4')
 ret, frame = cap.read()
-_, frame = preprocess(frame, k_size=5, fileter='m', op=cv2.MORPH_ELLIPSE)
+frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 frames = [frame] * 3
 while ret:
     ret, frame = cap.read()
-    orig_img = frame
-    _, frame = preprocess(frame, k_size=5, fileter='m', op=cv2.MORPH_ELLIPSE)
-    frames.pop(0)
+    orig_img = frame.copy()
+    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     frames.append(frame)
-    diff = frame_diff(frames)
+    frames = frames[1:]
+    motion = motion_detector(frames, enhencer=cv2.MORPH_ELLIPSE)
 
-    contours, _ = cv2.findContours(diff, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    bounds = contours_filter(contours, diff)
-    for bound in bounds[:10]:
-        # box = cv2.boundingRect()
+    contours, _ = cv2.findContours(motion, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    bounds = [cv2.boundingRect(contour) for contour in contours]
+    bounds = bounds_filter(bounds, motion)
+
+    for bound, score in bounds:
         x, y, w, h = bound
-        orig_img = cv2.rectangle(orig_img, (x, y), (w, h), (0, 255, 0))
-    # orig_img = cv2.drawContours(orig_img, contours[:10], -1, (0, 255, 0))
+        cv2.rectangle(orig_img, (x, y), (x+w, y+h), (0, 255, 0))
+        cv2.putText(orig_img, str('%.2f' % score), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 1)
 
+    # plt.imshow(frame, cmap='gray')
     orig_img = cv2.cvtColor(orig_img, cv2.COLOR_BGR2RGB)
-    # plt.imshow(diff, cmap='gray')
+    plt.subplot(1, 2, 1)
     plt.imshow(orig_img)
-    plt.pause(0.0001)
-    # plt.show()
+    plt.subplot(1, 2, 2)
+    plt.imshow(motion, cmap='gray')
+    plt.pause(0.001)
     plt.clf()
 cap.release()
 
