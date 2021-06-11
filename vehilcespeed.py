@@ -4,57 +4,66 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 
+from Detector import motion_detector, bounds_filter
+
 # 视频帧率: 30帧/s
-cap = cv2.VideoCapture('video3.mp4')
-rect1 = ((240, 330), (120, 5), -3)
-rect2 = ((360, 370), (200, 5), -4)
-box1, box2 = cv2.boxPoints(rect1), cv2.boxPoints(rect2)
-box1, box2 = np.int0(box1), np.int0(box2)
-plt.figure(0, figsize=(16, 8))
 
 def coils_pixels(frame, rect):
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    # 计算虚拟线圈内部的平均像素变化量
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) if len(frame.shape) == 3 else frame
     rows, cols = gray.shape
     (cen_x, cen_y), (r_w, r_h), angle = rect
     M = cv2.getRotationMatrix2D(rect[0], angle, 1)
     gray = cv2.warpAffine(gray, M, (cols, rows))
-    # plt.imshow(gray, cmap='gray')
-    # plt.show()
     cut = gray[int(cen_y-r_h/2):int(cen_y+r_h/2), int(cen_x-r_w/2):int(cen_x+r_w/2)]
-    # plt.imshow(cut, cmap='gray')
-    # plt.show()
-    # plt.pause(0.001)
     pixels = sum(sum(cut))
     mean_pixels = pixels / (r_h*r_w)
     return mean_pixels
 
 def show(frame):
     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    # plt.imshow(frame)
-    # frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     plt.imshow(frame, cmap='gray')
     plt.pause(0.001)
     # plt.show()
     plt.clf()
 
-def preprocess(frame, frame_size=None):
+def coils_boxs(frame, box, frame_size=None):
+    # 在图像中绘制虚拟线圈
     if frame_size:
         frame = cv2.resize(frame, frame_size)
-    frame = cv2.drawContours(frame, [box1], 0, (0, 0, 255), 2)
-    frame = cv2.drawContours(frame, [box2], 0, (0, 255, 0), 2)
+    frame = cv2.drawContours(frame, [box[0]], 0, (0, 0, 255), 2)
+    frame = cv2.drawContours(frame, [box[1]], 0, (0, 255, 0), 2)
     return frame
 
 
 def main():
-    ret, frame = cap.read()
-    # frame_size = (960, 540)
+    cap = cv2.VideoCapture('video3.mp4')
+    # 设置两个虚拟线圈的位置， 用矩形框在图像中给出
+    rect1 = ((290, 340), (120, 5), -3)
+    rect2 = ((360, 370), (200, 5), -4)
+    box1, box2 = cv2.boxPoints(rect1), cv2.boxPoints(rect2)
+    box = (np.int0(box1), np.int0(box2))
+    plt.figure(0, figsize=(16, 8))
+    # 速度，线圈距离，时间
     velocity, len_coils, time = 0, 10, 0
-    frame = preprocess(frame)
-    mean_coil_1 = coils_pixels(frame, rect1)
-    mean_coil_2 = coils_pixels(frame, rect2)
+
+    ret, frame = cap.read()
+    # 在图像帧中画出线圈位置
+    frame = coils_boxs(frame, box)
+    frames = [frame] * 2
+
+    thresh = motion_detector(frames, enhencer=cv2.MORPH_ELLIPSE)
+    contours, _ = cv2.findContours(motion, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    bounds = [cv2.boundingRect(contour) for contour in contours]
+    bounds = bounds_filter(bounds)
+
+    # 计算线圈位置是否有运动物体
+    # mean_coil_1 = coils_pixels(frame, rect1)
+    # mean_coil_2 = coils_pixels(frame, rect2)
+    # 标志位，记录是否有汽车进入
     car_enter = False
     while ret:
-        frame = preprocess(frame)
+        frame = coils_boxs(frame, box)
         coil_1 = coils_pixels(frame, rect1)
         coil_2 = coils_pixels(frame, rect2)
         diff_1 = abs(mean_coil_1 - coil_1)
@@ -79,8 +88,8 @@ def main():
             velocity = len_coils / time * 3.6  # km/h
         show(frame)
         ret, frame = cap.read()
+    cap.release()
 
 
 if __name__ == '__main__':
     main()
-    cap.release()
