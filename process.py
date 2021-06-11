@@ -43,12 +43,13 @@ while ret:
 
     contours, _ = cv2.findContours(motion, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     bounds = [cv2.boundingRect(contour) for contour in contours]
-    bounds = bounds_filter(bounds, motion)
+    # 根据矩形框面积进行排序
+    bounds.sort(key=lambda bound: bound[2]*bound[3], reverse=True)
 
-    for bound, score in bounds:
+    for bound in bounds[:5]:
         x, y, w, h = bound
         cv2.rectangle(orig_img, (x, y), (x+w, y+h), (0, 255, 0))
-        cv2.putText(orig_img, str('%.2f' % score), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 1)
+        # cv2.putText(orig_img, str('%.2f' % score), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 1)
 
     # plt.imshow(frame, cmap='gray')
     orig_img = cv2.cvtColor(orig_img, cv2.COLOR_BGR2RGB)
