@@ -6,11 +6,11 @@ import matplotlib.pyplot as plt
 
 # 视频帧率: 30帧/s
 cap = cv2.VideoCapture('video3.mp4')
-rect1 = ((270, 335), (90, 10), -5)
-rect2 = ((580, 480), (250, 15), -5)
+rect1 = ((240, 330), (120, 5), -3)
+rect2 = ((360, 370), (200, 5), -4)
 box1, box2 = cv2.boxPoints(rect1), cv2.boxPoints(rect2)
 box1, box2 = np.int0(box1), np.int0(box2)
-# plt.figure(0, figsize=(16, 8))
+plt.figure(0, figsize=(16, 8))
 
 def coils_pixels(frame, rect):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -29,16 +29,17 @@ def coils_pixels(frame, rect):
     return mean_pixels
 
 def show(frame):
-    # frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     # plt.imshow(frame)
-    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    # frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     plt.imshow(frame, cmap='gray')
     plt.pause(0.001)
     # plt.show()
     plt.clf()
 
-def preprocess(frame, frame_size):
-    frame = cv2.resize(frame, frame_size)
+def preprocess(frame, frame_size=None):
+    if frame_size:
+        frame = cv2.resize(frame, frame_size)
     frame = cv2.drawContours(frame, [box1], 0, (0, 0, 255), 2)
     frame = cv2.drawContours(frame, [box2], 0, (0, 255, 0), 2)
     return frame
@@ -46,15 +47,14 @@ def preprocess(frame, frame_size):
 
 def main():
     ret, frame = cap.read()
-    frame_size = (960, 540)
-    # frame_size = (540, 960)
+    # frame_size = (960, 540)
     velocity, len_coils, time = 0, 10, 0
-    frame = preprocess(frame, frame_size)
+    frame = preprocess(frame)
     mean_coil_1 = coils_pixels(frame, rect1)
     mean_coil_2 = coils_pixels(frame, rect2)
     car_enter = False
     while ret:
-        frame = preprocess(frame, frame_size)
+        frame = preprocess(frame)
         coil_1 = coils_pixels(frame, rect1)
         coil_2 = coils_pixels(frame, rect2)
         diff_1 = abs(mean_coil_1 - coil_1)

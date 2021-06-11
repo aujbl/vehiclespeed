@@ -4,23 +4,27 @@ import matplotlib.pyplot as plt
 
 plt.figure(0, figsize=(16, 8))
 
-def bounds_filter(bounds, img, min_area=50):
-    new_bounds = []
-    for bound in bounds:
-        x, y, w, h = bound
-        if w * h > min_area:
-            new_bounds.append((bound, 0))
-            # img = img[x:x+w, y:y+h]
-            # NonZero = cv2.countNonZero(img)
-            # if NonZero > 0:
-            #     bound = (bound, NonZero/(w*h))
-            #     new_bounds.append(bound)
-    return new_bounds
+def bounds_filter(bounds, min_area=50):
+    # 去掉面积较小的区域
+    bounds = [bound for bound in bounds if bound[2]*bound[3] > min_area]
+    # 根据矩形框面积进行排序
+    bounds.sort(key=lambda bound: bound[2]*bound[3], reverse=True)
+    i = 0
+    while i < len(bounds):
+        x1, y1, w1, h1 = bounds[i]
+        new_bounds = []
+        for bound in bounds[i+1:]:
+            x2, y2, w2, h2 = bound
+            if x1 <= x2 <= x1+w1 and y1 <= y2 <= y1+h1:
+                pass
+            else:
+                new_bounds.append(bound)
+        i += 1
+        bounds = bounds[:i]+new_bounds
+    return bounds
 
 def motion_detector(frames, blur_size=5, threshold=15, enhencer=None, e_size=7, iterations=3):
     diff = cv2.absdiff(frames[0], frames[1])
-    # diff_2 = cv2.absdiff(frames[2], frames[1])
-    # diff = cv2.absdiff(diff_2, diff_1)
     diff = cv2.medianBlur(diff, blur_size)
     _, thresh = cv2.threshold(diff, threshold, 255, cv2.THRESH_BINARY)
     if enhencer:
@@ -40,12 +44,9 @@ while ret:
     frames.append(frame)
     frames = frames[1:]
     motion = motion_detector(frames, enhencer=cv2.MORPH_ELLIPSE)
-
     contours, _ = cv2.findContours(motion, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     bounds = [cv2.boundingRect(contour) for contour in contours]
-    # 根据矩形框面积进行排序
-    bounds.sort(key=lambda bound: bound[2]*bound[3], reverse=True)
-
+    bounds = bounds_filter(bounds)
     for bound in bounds[:5]:
         x, y, w, h = bound
         cv2.rectangle(orig_img, (x, y), (x+w, y+h), (0, 255, 0))
