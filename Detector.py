@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 def bounds_filter(bounds, min_area=50):
     # 去掉面积较小的区域
     bounds = [bound for bound in bounds if bound[2]*bound[3] > min_area]
@@ -19,6 +20,7 @@ def bounds_filter(bounds, min_area=50):
         bounds = bounds[:i]+new_bounds
     return bounds
 
+
 def motion_detector(frames, blur_size=5, threshold=15, enhencer=None, e_size=7, iterations=5):
     #  input: 两帧灰度图
     # output： 运动物体的二值图
@@ -30,6 +32,7 @@ def motion_detector(frames, blur_size=5, threshold=15, enhencer=None, e_size=7, 
         thresh = cv2.dilate(thresh, enhencer, iterations)
         thresh = cv2.erode(thresh, enhencer)
     return thresh
+
 
 def main():
     plt.figure(0, figsize=(16, 8))
@@ -62,5 +65,7 @@ def main():
         plt.clf()
     cap.release()
 
+
 if __name__ == '__main__':
     main()
+
