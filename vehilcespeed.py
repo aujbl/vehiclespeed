@@ -3,13 +3,13 @@ import cv2.cv2
 import numpy as np
 import math
 import matplotlib.pyplot as plt
-
+# 导入检测运动物体的模块
 from Detector import motion_detector, bounds_filter
 
 
+# 计算虚拟线圈内部的平均像素变化量，无运动物体时，值为0；当有车辆经过时，会出现较大的值
+# 虚拟线圈在原图中是倾斜的，旋转为水平方向，不影响像素值，但可以大大方便计数
 def count_coils_pixels(gray, rect):
-    # 计算虚拟线圈内部的平均像素变化量
-    # gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) if len(frame.shape) == 3 else frame
     rows, cols = gray.shape
     (cen_x, cen_y), (r_w, r_h), angle = rect
     M = cv2.getRotationMatrix2D(rect[0], angle, 1)
@@ -20,12 +20,14 @@ def count_coils_pixels(gray, rect):
     return mean_pixels
 
 
+# 显示图片
 def show(orig_img, motion, wait_time=100):
     cv2.imshow('orig_img', orig_img)
     cv2.imshow('motion', motion)
     cv2.waitKey(wait_time)
 
 
+# 在图像中画出虚拟线圈的位置
 def draw_coils_boxes(frame, box, frame_size=None):
     # 在图像中绘制虚拟线圈
     if frame_size:
@@ -36,6 +38,7 @@ def draw_coils_boxes(frame, box, frame_size=None):
     return frame
 
 
+# 更新用来检测运动物体的帧
 def update_frames(orig_img, frames):
     frame = cv2.cvtColor(orig_img, cv2.COLOR_BGR2GRAY)
     frames.pop(0)
@@ -45,25 +48,28 @@ def update_frames(orig_img, frames):
 
 def main():
     cap = cv2.VideoCapture('video3.mp4')
-    # 设置两个虚拟线圈的位置， 用矩形框在图像中给出
+    # 设置虚拟线圈的位置， 并转换成矩形框坐标，方便在图像中画出
     rect_1 = ((290, 340), (120, 5), -3)
     rect_2 = ((390, 365), (150, 5), -4)
     rect_stop = ((640, 450), (200, 5), -9)
     box_1, box_2, box_stop = cv2.boxPoints(rect_1), cv2.boxPoints(rect_2), cv2.boxPoints(rect_stop)
     box = (np.int0(box_1), np.int0(box_2), np.int0(box_stop))
     plt.figure(0, figsize=(16, 8))
-    # 速度km/h，线圈间距：4m，时间
-    velocity, coils_interval, time, stop_lines = 0, 3.5, 0, 2.5
+    # 速度km/h，线圈间距：3.5m，停止线距离：4m
+    velocity, coils_interval, stop_lines = 0, 3.5, 2.5
 
     ret, orig_img = cap.read()
     frame = cv2.cvtColor(orig_img, cv2.COLOR_BGR2GRAY)
     frames = [frame] * 2
-
-    # 标志位，记录是否有汽车进入
-    car_enter_flag, crush_flag, cnt_frames, cnt_crush_frames = False, False, 1, 1
+    # 标志位1，标记是否有汽车进入，记录测试阶段图像跳变的帧数
+    # 标志位2：标记开始记录撞线时间，记录撞线阶段图像跳变的帧数
+    car_enter_flag, cnt_frames = False, 1
+    crush_flag, cnt_crush_frames = False, 1
     while ret:
         frames = update_frames(orig_img, frames)
+        # 检测图像中的运动物体
         motion = motion_detector(frames)
+        # 记录三个线圈内的平均像素值，用来进行后续的判断
         cnt_1 = count_coils_pixels(motion, rect_1)
         cnt_2 = count_coils_pixels(motion, rect_2)
         cnt_stop = count_coils_pixels(motion, rect_stop)
@@ -72,14 +78,17 @@ def main():
         cv2.putText(orig_img, str('%.2f' % cnt_stop), (rect_stop[0][0]-5, rect_stop[0][1]-5), cv2.FONT_HERSHEY_SIMPLEX, 0.6,(0, 0, 255), 1)
         # 标志位跳变过程
         if not car_enter_flag:
-            if cnt_1 > 20 and cnt_2 == 0:
+            # car_enter_flag=False时，等待汽车进入，达到条件1时即为有车进入，改变标志位
+            if cnt_1 > 20 and cnt_2 == 0: #条件1
                 car_enter_flag = True
                 cnt_frames = 1
                 crush_flag = False
-            if cnt_2 > 20 and cnt_stop < 10:
+            # 达到条件2时，记录跳变帧数，用来计算实际撞线时间
+            if cnt_2 > 20 and cnt_stop < 10: #条件2
                 cnt_crush_frames += 1
         else:
-            if cnt_2 <= 20:
+            # 满足条件3时，记录测速跳变帧数
+            if cnt_2 <= 20: #条件3
                 cnt_frames += 1
             else:
                 car_enter_flag = False
@@ -92,14 +101,17 @@ def main():
         text_3 = 'breast the tape phase: jump frames %d' % cnt_crush_frames
         text_4 = 'predict time: %.2f s, actual time: %.2f s' \
                  % ((3.6*stop_lines/velocity), (cnt_crush_frames/30))
-        cv2.putText(orig_img, text_1, (20, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 1)
-        cv2.putText(orig_img, text_2, (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 1)
-        cv2.putText(orig_img, text_3, (20, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 1)
-        cv2.putText(orig_img, text_4, (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 1)
-
+        cv2.putText(orig_img, text_1, (20, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 1)
+        cv2.putText(orig_img, text_2, (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 1)
+        cv2.putText(orig_img, text_3, (20, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 1)
+        cv2.putText(orig_img, text_4, (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 1)
+        # 在图像中画出三个虚拟线圈
         orig_img = draw_coils_boxes(orig_img, box)
+        # 检测运动物体的轮廓
         contours, _ = cv2.findContours(motion, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        # 画出包围运动物体的矩形框
         bounds = [cv2.boundingRect(contour) for contour in contours]
+        # 筛选候选框，得到主要的运动物体
         bounds = bounds_filter(bounds)
         for bound in bounds[:3]:
             x, y, w, h = bound
