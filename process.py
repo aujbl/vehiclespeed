@@ -73,7 +73,5 @@ if __name__ == '__main__':
         plt.clf()
     cap.release()
 
-# plt.show()
-
 
 # contours -> (minArea) -> bounds -> countNonzero -> iou -> threshold -> keep

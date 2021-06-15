@@ -3,6 +3,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
+# 对检测到的运动物体轮廓进行筛选，在这里，面积最大的几个物体一般就是汽车
+# 根据每个轮廓的矩形框大小进行筛选，直接去掉面积较小的物体
+# 然后根据矩形框的面积对剩下候选框进行排序
+# 对于有重叠区域的候选框，仅保留面积较大的一个
 def bounds_filter(bounds, min_area=50):
     # 去掉面积较小的区域
     bounds = [bound for bound in bounds if bound[2]*bound[3] > min_area]
@@ -21,6 +25,10 @@ def bounds_filter(bounds, min_area=50):
     return bounds
 
 
+# 帧差法：通过两帧图像间的像素变化检测运动物体
+# 对帧差图像进行中值滤波，去除噪点
+# 对滤波后的图像进行二值化处理
+# 使用椭圆形的算子对二值图像进行滤波，先膨胀三次，然后腐蚀一次，使得运动物体的图像连在一起
 def motion_detector(frames, blur_size=5, threshold=15, enhencer=None, e_size=7, iterations=5):
     #  input: 两帧灰度图
     # output： 运动物体的二值图

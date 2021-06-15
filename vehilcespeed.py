@@ -47,7 +47,7 @@ def update_frames(orig_img, frames):
 
 
 def main():
-    cap = cv2.VideoCapture('video3.mp4')
+    cap = cv2.VideoCapture('video4.mp4')
     # 设置虚拟线圈的位置， 并转换成矩形框坐标，方便在图像中画出
     rect_1 = ((290, 340), (120, 5), -3)
     rect_2 = ((390, 365), (150, 5), -4)
@@ -56,7 +56,12 @@ def main():
     box = (np.int0(box_1), np.int0(box_2), np.int0(box_stop))
     plt.figure(0, figsize=(16, 8))
     # 速度km/h，线圈间距：3.5m，停止线距离：4m
-    velocity, coils_interval, stop_lines = 0, 3.5, 2.5
+    velocity, coils_interval, stop_lines = 0, 3.5, 4.5
+
+    # 将测速结果保存为视频
+    fps, size = 30, (960, 544)
+    video = cv2.VideoWriter("output.mp4", cv2.VideoWriter_fourcc(*'mp4v'), fps, size)
+    motion_video = cv2.VideoWriter("motion.mp4", cv2.VideoWriter_fourcc(*'mp4v'), fps, size, isColor=0)
 
     ret, orig_img = cap.read()
     frame = cv2.cvtColor(orig_img, cv2.COLOR_BGR2GRAY)
@@ -79,32 +84,32 @@ def main():
         # 标志位跳变过程
         if not car_enter_flag:
             # car_enter_flag=False时，等待汽车进入，达到条件1时即为有车进入，改变标志位
-            if cnt_1 > 20 and cnt_2 == 0: #条件1
+            if cnt_1 > 10 and cnt_2 == 0: #条件1
                 car_enter_flag = True
                 cnt_frames = 1
                 crush_flag = False
             # 达到条件2时，记录跳变帧数，用来计算实际撞线时间
-            if cnt_2 > 20 and cnt_stop < 10: #条件2
+            if cnt_2 > 10 and cnt_stop < 20: #条件2
                 cnt_crush_frames += 1
         else:
             # 满足条件3时，记录测速跳变帧数
-            if cnt_2 <= 20: #条件3
+            if cnt_2 <= 10: #条件3
                 cnt_frames += 1
             else:
                 car_enter_flag = False
                 crush_flag = True
                 cnt_crush_frames = 1
         # 计算并显示重要信息
-        text_1 = 'velocity detection phase: jump frames %d' % cnt_frames
+        text_1 = 'velocity detection phase: jump frames  %d, time-consuming: %.2fs' % (cnt_frames, cnt_frames/30)
         velocity = (coils_interval/(cnt_frames/30)*3.6)
         text_2 = 'velocity: %.2f km/h' % velocity
         text_3 = 'breast the tape phase: jump frames %d' % cnt_crush_frames
         text_4 = 'predict time: %.2f s, actual time: %.2f s' \
                  % ((3.6*stop_lines/velocity), (cnt_crush_frames/30))
-        cv2.putText(orig_img, text_1, (20, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 1)
-        cv2.putText(orig_img, text_2, (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 1)
-        cv2.putText(orig_img, text_3, (20, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 1)
-        cv2.putText(orig_img, text_4, (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 1)
+        cv2.putText(orig_img, text_1, (20, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+        cv2.putText(orig_img, text_2, (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+        cv2.putText(orig_img, text_3, (20, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+        cv2.putText(orig_img, text_4, (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
         # 在图像中画出三个虚拟线圈
         orig_img = draw_coils_boxes(orig_img, box)
         # 检测运动物体的轮廓
@@ -116,13 +121,15 @@ def main():
         for bound in bounds[:3]:
             x, y, w, h = bound
             cv2.rectangle(orig_img, (x, y), (x + w, y + h), (0, 255, 0))
-        show(orig_img, motion, 50)
+        # 写入视频帧
+        video.write(orig_img)
+        motion_video.write(motion)
+        show(orig_img, motion, 1)
         ret, orig_img = cap.read()
 
-
-
     cap.release()
-
+    video.release()
+    cv2.destroyAllWindows()
 
 if __name__ == '__main__':
     main()
